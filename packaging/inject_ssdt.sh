@@ -4,8 +4,17 @@
 # 说明:
 #  - 固件层补丁通过 EFI 变量注入 ACPI SSDT, 再由内核参数 efivar_ssdt=CAM0SSD2 加载。
 #  - pacman 事务环境不适合写 EFI, 故由本 oneshot 服务处理。
-#  - 若变量已存在且是 immutable(已加载过), 本脚本尝试解锁并更新。
-#  - 若变量已存在且内容一致, 跳过。
+#  - 若变量已存在且内容一致, 跳过; 若为 immutable(已加载过), 先解锁再更新。
+#
+# 为什么用 python 而不是纯 bash:
+#  efivarfs 的文件写入必须在一次 open 后用**单次 write 系统调用**完成
+#  (EFI 变量不支持普通文件的 O_TRUNC/多次 write 语义)。
+#  bash 的 `cat > file` 会先 open(O_TRUNC) 再多次 write, 对 efivarfs 会
+#  报 "Operation not permitted" / 写入失败。
+#  python 的 os.open(O_WRONLY|O_CREAT) + os.write(buf) 单次写入才是正确方式。
+#  (已在机器上实测验证: bash cat > 失败, python os.write 成功)
+#
+# 依赖: python3
 set -euo pipefail
 
 GUID="9e21a83f-3c4d-4b7a-a5e8-6f0d1c2b3a4e"
@@ -20,7 +29,6 @@ fi
 
 # 若已存在且内容一致, 跳过
 if [[ -e "$VAR" ]]; then
-	# 检查已有的 aml 部分是否与我们的一致 (跳过前4字节 attributes)
 	existing_size=$(stat -c%s "$VAR" 2>/dev/null || echo 0)
 	aml_size=$(stat -c%s "$AML")
 	if [[ $existing_size -eq $((aml_size + 4)) ]]; then
@@ -29,7 +37,7 @@ if [[ -e "$VAR" ]]; then
 			exit 0
 		fi
 	fi
-	echo "更新已有 SSDT 变量 (先尝试解锁 immutable)"
+	echo "更新已有 SSDT 变量 (先解锁 immutable)"
 	chattr -i "$VAR" 2>/dev/null || true
 fi
 
@@ -40,10 +48,11 @@ GUID, VARNAME, AML, VAR = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 aml = open(AML, 'rb').read()
 attrs = (0x1 | 0x2 | 0x4).to_bytes(4, 'little')  # NonVolatile | BootService | Runtime
 try:
-    with open(VAR, 'wb') as f:
-        f.write(attrs + aml)
+    fd = os.open(VAR, os.O_WRONLY | os.O_CREAT)
+    os.write(fd, attrs + aml)
+    os.close(fd)
 except PermissionError:
-    print(f"无法写入 {VAR}, 请检查权限 (efivarfs 可能需 root)", file=sys.stderr)
+    print(f"无法写入 {VAR}, 请检查权限/解锁 immutable", file=sys.stderr)
     sys.exit(1)
 print(f"写入完成: {len(aml)} 字节")
 EOF

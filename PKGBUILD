@@ -15,8 +15,8 @@ pkgdesc="Make the Sony IMX208 camera work on Google Atlas (Pixelbook Go) under O
 arch=('x86_64')
 url="https://github.com/deepdream/atlas-imx208-camera"
 license=('GPL-2.0')
-depends=('linux' 'zstd')
-makedepends=('linux-headers' 'python')
+depends=('linux' 'zstd' 'python')
+makedepends=('linux-headers')
 optdepends=('libcamera: user-space side, run setup_libcamera.sh'
             'acpica: to rebuild the SSDT if needed')
 install=atlas-imx208-camera.install
