@@ -1,0 +1,35 @@
+post_install() {
+    KVER="$(uname -r)"
+    echo "==> atlas-imx208-camera 安装完成"
+    echo "   已安装内核模块: /usr/lib/modules/$KVER/updates/imx208.ko.zst"
+    echo ""
+    echo "==> 重新生成模块依赖"
+    depmod -a "$KVER" 2>/dev/null || true
+    echo ""
+    echo "==> 启用 SSDT 注入服务 (开机写入 EFI 变量)"
+    systemctl enable atlas-camera-ssdt.service 2>/dev/null || true
+    systemctl start atlas-camera-ssdt.service 2>/dev/null || true
+    echo ""
+    echo "=== 重要: 还需两步才能让摄像头真正工作 ==="
+    echo "1) 在内核启动参数中加入: efivar_ssdt=CAM0SSD2"
+    echo "   - Limine: 编辑 /etc/default/limine 的 KERNEL_CMDLINE 行, 然后运行 limine-update"
+    echo "   - systemd-boot: 编辑 /boot/loader/entries/*.conf 的 options"
+    echo "2) 重启系统 (让 SSDT 生效)"
+    echo ""
+    echo "   重启后验证: cam -l 应显示 Internal front camera"
+    echo "   如果 cam -l 为空, 运行: sudo /usr/share/atlas-imx208-camera/setup_libcamera.sh"
+    echo "   参考文档: /usr/share/doc/atlas-imx208-camera/README.md"
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    echo "==> 禁用 SSDT 注入服务"
+    systemctl disable atlas-camera-ssdt.service 2>/dev/null || true
+    systemctl stop atlas-camera-ssdt.service 2>/dev/null || true
+    echo "   注意: 若要彻底移除固件层, 需手动删除 efivar_ssdt=CAM0SSD2 内核参数"
+    echo "   并移除 EFI 变量: sudo rm /sys/firmware/efi/efivars/CAM0SSD2-9e21a83f-3c4d-4b7a-a5e8-6f0d1c2b3a4e"
+    echo "   (删除 EFI 变量若被拒, 需先 chattr -i)"
+}

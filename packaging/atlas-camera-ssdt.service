@@ -1,0 +1,14 @@
+[Unit]
+Description=Inject ACPI SSDT for Atlas IMX208 camera (CAM0)
+After=systemd-modules-load.service
+ConditionPathExists=/usr/share/atlas-imx208-camera/ssdt-cam0.aml
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/share/atlas-imx208-camera/inject_ssdt.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

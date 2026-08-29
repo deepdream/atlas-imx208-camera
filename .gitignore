@@ -6,7 +6,18 @@
 *.mod.c
 Module.symvers
 modules.order
+
+# 构建/打包目录与产物
 build/
+build-src/
+pkg/
+pkg-build/
+src/
+*.pkg.tar.zst
+*.pkg.tar
+
 # 系统二进制备份
 *.orig-backup
-*src/
+
+# 临时
+*.swp
