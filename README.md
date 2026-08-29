@@ -69,6 +69,33 @@
 
 > 以下均在目标机器上执行（需要 root）。假定内核版本与补丁一致（本仓库针对 Linux 7.1.x / libcamera 0.7.2）。
 
+### 方式 A：使用预构建的安装包（推荐）
+
+前往 [Releases](../../releases) 下载 `atlas-imx208-camera-*.pkg.tar.zst`，然后：
+
+```bash
+sudo pacman -U atlas-imx208-camera-*-x86_64.pkg.tar.zst
+```
+
+安装包会：
+- 安装 imx208 补丁内核模块到 `/lib/modules/<kver>/updates/`
+- 安装 ACPI SSDT + 开机注入 EFI 变量的 systemd 服务（`atlas-camera-ssdt.service`）
+- 在 `post_install` 中提示你添加 `efivar_ssdt=CAM0SSD2` 内核参数
+
+> ⚠️ **重要**：预构建包针对**特定内核版本**（见 Release 名）。其它内核请自行构建：
+>
+> ```bash
+> git clone https://github.com/deepdream/atlas-imx208-camera
+> cd atlas-imx208-camera
+> ./make-pkg.sh          # 需要 linux-headers
+> sudo pacman -U build-src/atlas-imx208-camera-*.pkg.tar.zst
+> ```
+
+> 由于 libcamera 补丁是侵入式覆盖系统库，**不打包**。安装包后会提示并调用
+> `/usr/share/atlas-imx208-camera/setup_libcamera.sh`（见下方 `### 3. 用户态`）。
+
+### 方式 B：从源码构建（详见下方分层说明）
+
 ### 准备工具
 
 ```bash
