@@ -1,0 +1,12 @@
+# 编译产物
+*.o
+*.ko
+*.cmd
+*.mod
+*.mod.c
+Module.symvers
+modules.order
+build/
+# 系统二进制备份
+*.orig-backup
+*src/
